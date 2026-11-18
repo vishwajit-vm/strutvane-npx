@@ -18,15 +18,19 @@ anything not re-run by the coordinator is marked *(agent-reported)*.
   refused; `strut.js` link refused; framework dir / bin real path must stay inside the root; bin must
   be a plain relative `.js/.mjs/.cjs`; loop guard `STRUTVANE_NPX_DEPTH`; terminal-safe output.
 - Tests: unit + attack tests + end-to-end against `src/bin.ts` (Node type stripping).
-- Canonical files copied verbatim from `packages/tooling/canonical` (configs, `.npmrc`,
-  `.gitignore`, `.claude/` synced files) so the gate runs; `.github/` deliberately not written.
+- Synced by strutvane-tooling as the `npx` library target (tooling branch
+  `feat/npx-and-app-template`; this repo's branch `chore/tooling-sync`): the sync wrote
+  `.github/workflows/{ci,release,scorecard}.yml`, `.github/dependabot.yml`, `.github/scripts/*`
+  and `RELEASE-READINESS.md`; the earlier hand copies of the configs showed no drift. After the
+  sync: `npm run ci` green once (107 passed, 3 skipped; coverage 98.38/94.97/100/99.06; build
+  OK), check-deps, check-code-rules and check-package clean *(agent-reported)*. publint/attw not
+  re-run after the sync (no package change).
 
 ## Next
 
-1. **Tooling:** add this repo to `packages/tooling/manifest.json` as a library target
-   (`{ "name": "npx", "profile": "library" }`), run `node packages/tooling/scripts/sync.mjs`; that
-   writes `.github/workflows`, `.github/scripts`, `dependabot.yml` and `RELEASE-READINESS.md`.
-   The copied config files should then show no drift.
+1. **Merge** `chore/tooling-sync` into `main` after the tooling branch is merged (any push to
+   `main` with `RELEASE_ENABLED=true` runs the release workflow: version first, framework first).
+   Fill in `RELEASE-READINESS.md` (R1–R9) before the first release.
 2. **Repo memory:** add `CLAUDE.md` (and the usual `.claude/` agents/commands) with the
    `new-package-repo` skill's template.
 3. **Decisions for the project lead** (also in the report):
