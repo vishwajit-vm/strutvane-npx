@@ -61,7 +61,7 @@
     "test:perf": "vitest run --config vitest.perf.config.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.7",
+    "@biomejs/biome": "2.6.8",
     "@changesets/cli": "3.0.3",
     "@types/node": "24.19.2",
     "@vitest/coverage-v8": "5.1.0",
