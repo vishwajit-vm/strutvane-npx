@@ -3,6 +3,24 @@
 Status of this branch for the next session. Facts here are checked against git and the gate output;
 anything not re-run by the coordinator is marked *(agent-reported)*.
 
+## Branch `fix/macos` (2026-11-20): macOS CI fix, not merged, not pushed
+
+- **Cause** (CI runs 44278587225 and 44578698106, both macOS jobs): `npm ci` stopped with
+  `ESTRICTALLOWSCRIPTS` on `fsevents@2.3.3`, an optional macOS-only dev dependency (via vite) with
+  an install script. Linux and Windows skip it, so only macOS failed; no test ever ran there.
+- **Fix:** package.json `"allowScripts": { "fsevents@2.3.3": false }` (refused, same as the
+  framework, installer and other repos). Reproduced and checked on Windows with
+  `npm ci --os=darwin --cpu=arm64`: exit 1 before, exit 0 after.
+- **Regression tests:** `package.test.ts` checks that every lockfile entry with an install script
+  has an allowScripts decision (fails on every OS, not only on macOS). The guard code already
+  handled macOS's `/var` → `/private/var` temp link correctly (it compares real paths, and refuses
+  only a root that is itself a link); new tests pin that with a linked parent folder (junction on
+  Windows) in `target`, `project` and `main` tests.
+- Gate 3× green (116 passed, 3 skipped; coverage 98.38/94.97/100/99.06), publint, attw,
+  check-deps, check-code-rules, check-package OK *(agent-reported)*.
+- **Next:** coordinator re-runs the gate, merges into `main` and pushes; then confirm the macOS
+  jobs on GitHub CI. No changeset: nothing published changes behaviour.
+
 ## Done
 
 - `strutvane` 0.2.0-next.0 (Changesets pre mode `next`, one minor changeset, now under

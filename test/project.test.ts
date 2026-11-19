@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { findProject } from '../src/project.ts'
 import {
   factsFor,
+  linkedParent,
   makeProject,
   projectManifest,
   removeDir,
@@ -121,5 +122,52 @@ describe('findProject', () => {
     mkdirSync(empty, { recursive: true })
     writeFileSync(join(empty, 'package.json'), projectManifest({ dependencies: {} }))
     expect(findProject(empty, factsFor(base))).toEqual({ kind: 'none', start: empty })
+  })
+})
+
+// macOS: os.tmpdir() is `/var/folders/…`, but `/var` is a link to `/private/var`, so the same
+// folder has two spellings. Simulated on every OS with a linked parent folder (a junction on
+// Windows): the rules must hold whichever spelling the search or the facts use.
+describe('findProject: paths that pass through a linked parent folder', () => {
+  it('finds the project under the linked spelling, keeping that spelling', () => {
+    const base = home()
+    const { link } = linkedParent(base)
+    const root = makeProject(join(link, 'blog'))
+    const deep = join(root, 'app', 'models')
+    mkdirSync(deep, { recursive: true })
+    expect(findProject(deep, factsFor(base))).toEqual({ kind: 'project', root })
+  })
+
+  it('attack: a project planted in the temp directory is never used, whichever spelling', () => {
+    const base = home()
+    const { link, real } = linkedParent(base)
+    makeProject(link) // in the "temp directory" itself
+    const below = join(link, 'download-123')
+    mkdirSync(below, { recursive: true })
+    const h = join(base, 'h')
+    // The temp directory named by its link, the search walking real paths, and the reverse.
+    for (const [temp, start] of [
+      [link, join(real, 'download-123')],
+      [real, below],
+      [link, below],
+    ] as const) {
+      expect(findProject(start, { home: h, temp, uid: undefined }), `${temp} / ${start}`).toEqual({
+        kind: 'none',
+        start,
+      })
+    }
+  })
+
+  it('attack: a project above home is never used, when home is spelled through a link', () => {
+    const base = home()
+    const { link, real } = linkedParent(base)
+    makeProject(join(real, 'users')) // planted in the folder above "home"
+    const work = join(link, 'users', 'ana', 'notes')
+    mkdirSync(work, { recursive: true })
+    for (const userHome of [join(link, 'users', 'ana'), join(real, 'users', 'ana')]) {
+      expect(findProject(work, factsFor(userHome))).toEqual({ kind: 'none', start: work })
+      const realWork = join(real, 'users', 'ana', 'notes')
+      expect(findProject(realWork, factsFor(userHome))).toEqual({ kind: 'none', start: realWork })
+    }
   })
 })

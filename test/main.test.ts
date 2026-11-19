@@ -14,6 +14,7 @@ import {
   factsFor,
   installFramework,
   linkDir,
+  linkedParent,
   makeProject,
   readReport,
   removeDir,
@@ -174,6 +175,19 @@ describe('main: inside a project', () => {
     const { run } = fakeRunner({ kind: 'signal', signal: 'SIGTERM' })
     const { env } = environment(join(base, 'blog'), base, { run })
     expect(await main([], env)).toEqual({ signal: 'SIGTERM', exitCode: 143 })
+  })
+
+  it('runs a project whose path passes through a linked parent folder (macOS /var)', async () => {
+    const base = home()
+    const { link, real } = linkedParent(base)
+    const root = makeProject(join(link, 'blog'))
+    const { env, report } = environment(join(root, 'app'), base)
+    mkdirSync(join(root, 'app'))
+    expect(await main(['migrate'], env)).toEqual({ exitCode: 0 })
+    const got = readReport(report)
+    expect(got.args).toEqual(['migrate'])
+    expect(realpathSync.native(got.cwd)).toBe(join(real, 'blog'))
+    expect(got.script).toBe(join(real, 'blog', 'strut.js'))
   })
 
   it('a child that cannot start is reported (exit 1)', async () => {

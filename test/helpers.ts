@@ -146,6 +146,20 @@ export function linkDir(target: string, path: string): void {
 }
 
 /**
+ * A folder reached through a linked parent, the way macOS reaches its temp folders: `/var` is a
+ * link to `/private/var`, so `os.tmpdir()` (`/var/folders/…`) is not a real path. Creates
+ * `<top>/private/var` and the link `<top>/var` pointing at it, and returns both spellings.
+ * Nothing below the link is itself a link, so a project there is an ordinary project.
+ */
+export function linkedParent(top: string): { readonly link: string; readonly real: string } {
+  const real = join(top, 'private', 'var')
+  mkdirSync(real, { recursive: true })
+  const link = join(top, 'var')
+  linkDir(real, link)
+  return { link, real: realpathSync.native(real) }
+}
+
+/**
  * Create a file symlink, or return `false` when the OS refuses (Windows without Developer Mode
  * or admin rights), so the test can skip itself with the reason.
  */

@@ -5,6 +5,7 @@ import { frameworkBin, isSafeBinPath, resolveTarget } from '../src/target.ts'
 import {
   installFramework,
   linkDir,
+  linkedParent,
   makeProject,
   removeDir,
   reporter,
@@ -242,5 +243,64 @@ describe('resolveTarget: the framework program (no strut.js)', () => {
     const root = makeProject(join(base(), 'api'), { strut: false })
     mkdirSync(join(root, 'node_modules', '@strutvane', 'framework'), { recursive: true })
     expect(resolveTarget(root)).toMatchObject({ kind: 'refused', reason: 'framework-invalid' })
+  })
+})
+
+// macOS: the temp folders are under `/var`, a link to `/private/var`, so a project's path can pass
+// through a system link without the project root being one. Simulated here on every OS with a
+// linked parent folder (a junction on Windows).
+describe('resolveTarget: a project whose path passes through a linked parent folder', () => {
+  it('runs strut.js; only the root itself being a link is refused', () => {
+    const { link, real } = linkedParent(base())
+    const root = makeProject(join(link, 'blog'))
+    expect(resolveTarget(root)).toEqual({
+      kind: 'run',
+      root,
+      script: join(real, 'blog', 'strut.js'),
+      via: 'strut.js',
+    })
+  })
+
+  it("runs the installed framework's program (its real path is inside the real root)", () => {
+    const { link, real } = linkedParent(base())
+    const root = makeProject(join(link, 'api'), { strut: false })
+    installFramework(root)
+    expect(resolveTarget(root)).toEqual({
+      kind: 'run',
+      root,
+      script: join(
+        real,
+        'api',
+        'node_modules',
+        '@strutvane',
+        'framework',
+        'dist',
+        'console',
+        'bin.mjs',
+      ),
+      via: 'framework',
+    })
+  })
+
+  it('attack: a root that is itself a link is still refused, below a linked parent too', () => {
+    const { link, real } = linkedParent(base())
+    makeProject(join(real, 'real-app'))
+    const innocent = join(link, 'innocent-looking')
+    linkDir(join(real, 'real-app'), innocent)
+    expect(resolveTarget(innocent)).toEqual({
+      kind: 'refused',
+      reason: 'root-is-link',
+      path: innocent,
+      realPath: join(real, 'real-app'),
+    })
+  })
+
+  it('attack: a framework linked outside the project is still refused', () => {
+    const top = base()
+    const { link } = linkedParent(top)
+    const root = makeProject(join(link, 'api'), { strut: false })
+    const outside = installFramework(top, {}, join(top, 'elsewhere', 'framework'))
+    linkDir(outside, join(root, 'node_modules', '@strutvane', 'framework'))
+    expect(resolveTarget(root)).toMatchObject({ kind: 'refused', reason: 'framework-outside-root' })
   })
 })
