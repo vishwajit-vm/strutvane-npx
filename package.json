@@ -18,7 +18,7 @@
     "url": "git+https://github.com/vishwajit-vm/strutvane-npx.git"
   },
   "license": "MIT",
-  "author": "The Strutvane Authors",
+  "author": "Vishwajit Mall",
   "type": "module",
   "sideEffects": false,
   "bin": {
